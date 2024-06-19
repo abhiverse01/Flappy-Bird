@@ -1,0 +1,41 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flappy Bird</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+        canvas {
+            background-color: #87CEEB;
+            display: block;
+            margin: auto;
+        }
+        .difficulty {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .difficulty button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="difficulty">
+        <button onclick="startGame('easy')">Easy</button>
+        <button onclick="startGame('hard')">Hard</button>
+        <button onclick="startGame('advanced')">Advanced</button>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script src="flappy.js"></script>
+</body>
+</html>
