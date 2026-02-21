@@ -1,41 +1,148 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Flappy Bird</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Flappy Bird: God Mode Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a2e;
+            color: white;
+            font-family: 'Press Start 2P', cursive;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
-            margin: 0;
+            user-select: none;
         }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
         canvas {
-            background-color: #87CEEB;
             display: block;
-            margin: auto;
+            background-color: #70c5ce; /* Classic sky blue */
         }
-        .difficulty {
+
+        /* Modern UI Overlay */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             text-align: center;
-            margin-bottom: 20px;
+            z-index: 10;
+            backdrop-filter: blur(2px);
         }
-        .difficulty button {
-            padding: 10px 20px;
-            margin: 5px;
-            font-size: 16px;
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #ffd700;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 12px;
             cursor: pointer;
+            border-bottom: 4px solid #357a38;
+            border-radius: 4px;
+            margin: 10px;
+            transition: transform 0.1s;
+        }
+
+        .btn:active {
+            transform: translateY(2px);
+            border-bottom-width: 2px;
+        }
+
+        .btn-difficulty {
+            background: #2196f3;
+            border-bottom-color: #0d47a1;
+            font-size: 10px;
+            padding: 10px 20px;
+        }
+
+        .btn-difficulty.selected {
+            background: #ff9800;
+            border-bottom-color: #e65100;
+        }
+
+        .score-display {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 40px;
+            color: white;
+            text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000;
+            pointer-events: none;
+            z-index: 5;
         }
     </style>
 </head>
 <body>
-    <div class="difficulty">
-        <button onclick="startGame('easy')">Easy</button>
-        <button onclick="startGame('hard')">Hard</button>
-        <button onclick="startGame('advanced')">Advanced</button>
+
+    <div id="game-container">
+        <div class="score-display" id="score-display">0</div>
+        
+        <!-- Main Menu -->
+        <div class="overlay" id="menu-screen">
+            <h1>FLAPPY BIRD</h1>
+            <p style="font-size: 10px; margin-bottom: 20px;">GOD MODE EDITION</p>
+            
+            <div style="margin-bottom: 20px;">
+                <p style="font-size: 10px; margin-bottom: 10px;">DIFFICULTY</p>
+                <button class="btn btn-difficulty selected" onclick="selectDifficulty('easy')" id="btn-easy">EASY</button>
+                <button class="btn btn-difficulty" onclick="selectDifficulty('hard')" id="btn-hard">HARD</button>
+                <button class="btn btn-difficulty" onclick="selectDifficulty('insane')" id="btn-insane">INSANE</button>
+            </div>
+
+            <button class="btn" onclick="startGame()">START GAME</button>
+            <p style="font-size: 8px; margin-top: 20px; color: #ccc;">SPACE or TAP to FLAP</p>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div class="overlay hidden" id="gameover-screen">
+            <h1 style="color: #ff4444;">GAME OVER</h1>
+            <div style="margin: 20px 0;">
+                <p style="font-size: 12px;">SCORE</p>
+                <p style="font-size: 24px;" id="final-score">0</p>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <p style="font-size: 12px;">BEST</p>
+                <p style="font-size: 20px; color: gold;" id="best-score">0</p>
+            </div>
+            <button class="btn" onclick="restartGame()">RETRY</button>
+            <button class="btn" style="background: #607d8b; border-bottom-color: #37474f;" onclick="showMenu()">MENU</button>
+        </div>
+
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
     </div>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
     <script src="flappy.js"></script>
 </body>
 </html>
