@@ -1,148 +1,573 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Flappy Bird: God Mode Edition</title>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #1a1a2e;
-            color: white;
-            font-family: 'Press Start 2P', cursive;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            user-select: none;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#060612">
+  <title>NANO·BIRD — Cyber Flight</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════
+       RESET & TOKENS
+    ═══════════════════════════════════════ */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
-        #game-container {
-            position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            border-radius: 8px;
-            overflow: hidden;
-        }
+    :root {
+      --cyan:        #22d3ee;
+      --cyan-dim:    rgba(34,211,238,0.18);
+      --cyan-glow:   rgba(34,211,238,0.35);
+      --pink:        #f472b6;
+      --pink-dim:    rgba(244,114,182,0.18);
+      --pink-glow:   rgba(244,114,182,0.35);
+      --amber:       #fbbf24;
+      --violet:      #a78bfa;
+      --bg:          #060612;
+      --surface:     rgba(255,255,255,0.035);
+      --surface-2:   rgba(255,255,255,0.06);
+      --border:      rgba(255,255,255,0.08);
+      --border-hi:   rgba(255,255,255,0.14);
+      --text:        #f1f5f9;
+      --muted:       rgba(241,245,249,0.40);
+      --faint:       rgba(241,245,249,0.16);
+      --dyn-hue:     185;
+      --dyn-accent:  hsl(var(--dyn-hue), 92%, 62%);
+      --combo-scale: 0;
+      --vel-norm:    0;          /* 0-1, set by JS */
+      --font: 'Poppins', system-ui, sans-serif;
+    }
 
-        canvas {
-            display: block;
-            background-color: #70c5ce; /* Classic sky blue */
-        }
+    html, body {
+      width:100%; height:100%;
+      background: var(--bg);
+      display: flex; justify-content: center; align-items: center;
+      font-family: var(--font);
+      overflow: hidden;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      cursor: none;
+    }
 
-        /* Modern UI Overlay */
-        .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            z-index: 10;
-            backdrop-filter: blur(2px);
-        }
+    /* ═══════════════════════════════════════
+       CUSTOM CURSOR
+    ═══════════════════════════════════════ */
+    #cursor {
+      position: fixed; pointer-events: none;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--cyan); box-shadow: 0 0 12px var(--cyan-glow);
+      transform: translate(-50%,-50%);
+      z-index: 9999; transition: transform 0.08s ease, opacity 0.2s;
+    }
+    #cursor-ring {
+      position: fixed; pointer-events: none;
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 1px solid rgba(34,211,238,0.4);
+      transform: translate(-50%,-50%);
+      z-index: 9998; transition: transform 0.18s cubic-bezier(0.23,1,0.32,1), opacity 0.2s;
+    }
 
-        .hidden {
-            display: none !important;
-        }
+    /* ═══════════════════════════════════════
+       WRAP  (the 400×600 game stage)
+    ═══════════════════════════════════════ */
+    #wrap {
+      position: relative;
+      width: 400px; height: 600px;
+      flex-shrink: 0;
+      transform-origin: center center;
+    }
 
-        h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: #ffd700;
-            text-shadow: 2px 2px 0px #000;
-        }
+    canvas { display: block; width: 400px; height: 600px; }
 
-        .btn {
-            background: #4caf50;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-family: 'Press Start 2P', cursive;
-            font-size: 12px;
-            cursor: pointer;
-            border-bottom: 4px solid #357a38;
-            border-radius: 4px;
-            margin: 10px;
-            transition: transform 0.1s;
-        }
+    /* ── Scanlines ── */
+    #wrap::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent 0, transparent 2px,
+        rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px
+      );
+      pointer-events: none; z-index: 50;
+    }
 
-        .btn:active {
-            transform: translateY(2px);
-            border-bottom-width: 2px;
-        }
+    /* ── Corner brackets ── */
+    .corner {
+      position: absolute; width: 22px; height: 22px;
+      z-index: 60; pointer-events: none;
+      transition: border-color 0.4s ease;
+    }
+    .corner.tl { top:-1px; left:-1px;  border-top:2px solid var(--dyn-accent); border-left:2px solid var(--dyn-accent); }
+    .corner.tr { top:-1px; right:-1px; border-top:2px solid var(--dyn-accent); border-right:2px solid var(--dyn-accent); }
+    .corner.bl { bottom:-1px; left:-1px;  border-bottom:2px solid var(--dyn-accent); border-left:2px solid var(--dyn-accent); }
+    .corner.br { bottom:-1px; right:-1px; border-bottom:2px solid var(--dyn-accent); border-right:2px solid var(--dyn-accent); }
 
-        .btn-difficulty {
-            background: #2196f3;
-            border-bottom-color: #0d47a1;
-            font-size: 10px;
-            padding: 10px 20px;
-        }
+    /* Outer shadow ring */
+    #wrap-outer {
+      position: relative;
+      box-shadow:
+        0 0 0 1px rgba(34,211,238,0.07),
+        0 0 60px  rgba(34,211,238,0.08),
+        0 0 120px rgba(34,211,238,0.04),
+        0 30px 80px rgba(0,0,0,0.7);
+    }
 
-        .btn-difficulty.selected {
-            background: #ff9800;
-            border-bottom-color: #e65100;
-        }
+    /* ═══════════════════════════════════════
+       HUD  (in-game, on top of canvas)
+    ═══════════════════════════════════════ */
+    #hud {
+      position: absolute; inset: 0;
+      pointer-events: none; z-index: 20;
+    }
 
-        .score-display {
-            position: absolute;
-            top: 20px;
-            width: 100%;
-            text-align: center;
-            font-size: 40px;
-            color: white;
-            text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000;
-            pointer-events: none;
-            z-index: 5;
-        }
-    </style>
+    /* Score — top-left */
+    #hud-score {
+      position: absolute; top: 20px; left: 20px;
+    }
+    #score-num {
+      font-size: 52px; font-weight: 900; line-height: 1;
+      color: var(--dyn-accent);
+      filter: drop-shadow(0 0 16px var(--dyn-accent));
+      letter-spacing: -1px;
+      transition: color 0.5s ease, filter 0.5s ease;
+    }
+    #score-label {
+      font-size: 9px; font-weight: 600; letter-spacing: 4px;
+      color: var(--faint); margin-top: 2px;
+      text-transform: uppercase;
+    }
+
+    /* Best + combo — top-right */
+    #hud-right {
+      position: absolute; top: 20px; right: 18px;
+      text-align: right;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+    }
+    #best-block { display: flex; flex-direction: column; align-items: flex-end; }
+    #best-num {
+      font-size: 20px; font-weight: 700; color: var(--amber);
+      filter: drop-shadow(0 0 8px rgba(251,191,36,0.45));
+    }
+    #best-label {
+      font-size: 7px; font-weight: 600; letter-spacing: 3px;
+      color: var(--faint); text-transform: uppercase;
+    }
+
+    /* Combo badge */
+    #combo-badge {
+      display: flex; align-items: center; gap: 5px;
+      background: linear-gradient(135deg, var(--pink-dim), rgba(244,114,182,0.08));
+      border: 1px solid rgba(244,114,182,0.35);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-size: 9px; font-weight: 700; letter-spacing: 2px;
+      color: var(--pink);
+      filter: drop-shadow(0 0 8px rgba(244,114,182,0.4));
+      opacity: 0; transform: scale(0.7) translateX(6px);
+      transition: opacity 0.22s cubic-bezier(0.22,1,0.36,1),
+                  transform 0.22s cubic-bezier(0.22,1,0.36,1);
+    }
+    #combo-badge.visible {
+      opacity: 1; transform: scale(1) translateX(0);
+    }
+    #combo-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--pink);
+      animation: dotPulse 0.9s ease-in-out infinite;
+    }
+
+    /* Velocity strip — thin left edge bar */
+    #vel-bar {
+      position: absolute; top: 0; left: 0;
+      width: 3px; height: 100%;
+      overflow: hidden;
+    }
+    #vel-fill {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(to top, var(--pink), var(--amber));
+      box-shadow: 1px 0 8px rgba(244,114,182,0.5);
+      height: calc(var(--vel-norm) * 100%);
+      transition: height 0.06s linear;
+    }
+
+    /* Shield bar — bottom */
+    #shield-bar {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--violet), transparent);
+      opacity: 0; transition: opacity 0.3s ease;
+      box-shadow: 0 0 12px var(--violet);
+    }
+    #shield-bar.visible { opacity: 1; }
+
+    #shield-text {
+      position: absolute; bottom: 12px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 7px; font-weight: 600; letter-spacing: 5px;
+      color: var(--violet); white-space: nowrap;
+      filter: drop-shadow(0 0 6px var(--violet));
+      opacity: 0; transition: opacity 0.3s ease;
+    }
+    #shield-text.visible { opacity: 1; }
+
+    /* ═══════════════════════════════════════
+       OVERLAY BASE
+    ═══════════════════════════════════════ */
+    .overlay {
+      position: absolute; inset: 0;
+      background: rgba(6,6,18,0.90);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      justify-content: space-between; align-items: center;
+      z-index: 40; padding: 0 32px;
+      animation: ovFadeIn 0.28s ease-out both;
+    }
+    .overlay.hidden { display: none !important; }
+
+    @keyframes ovFadeIn {
+      from { opacity:0; }
+      to   { opacity:1; }
+    }
+
+    /* Overlay content area (vertically centred) */
+    .ov-body {
+      flex: 1; display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      width: 100%;
+    }
+
+    /* ── Eyebrow ── */
+    .ov-eyebrow {
+      font-size: 8px; font-weight: 600; letter-spacing: 8px;
+      color: var(--faint); text-transform: uppercase;
+      margin-bottom: 8px;
+      animation: stagger 0.5s 0.05s ease-out both;
+    }
+
+    /* ── Title ── */
+    .ov-title {
+      font-size: 36px; font-weight: 900; letter-spacing: -0.5px;
+      line-height: 1; text-align: center;
+      color: var(--text);
+      margin-bottom: 6px;
+      animation: stagger 0.5s 0.10s ease-out both;
+    }
+
+    .ov-title .accent { color: var(--cyan); }
+    .ov-title.danger  .accent { color: var(--pink); }
+
+    .ov-subtitle {
+      font-size: 10px; font-weight: 500; letter-spacing: 4px;
+      color: var(--muted); text-transform: uppercase;
+      margin-bottom: 44px;
+      animation: stagger 0.5s 0.14s ease-out both;
+    }
+
+    /* ── Divider ── */
+    .ov-line {
+      width: 100%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-hi), transparent);
+      margin: 24px 0;
+      animation: stagger 0.5s 0.18s ease-out both;
+    }
+
+    /* ── Difficulty segment ── */
+    .diff-group {
+      display: flex; gap: 0; margin-bottom: 36px;
+      border: 1px solid var(--border-hi); border-radius: 10px;
+      overflow: hidden;
+      animation: stagger 0.5s 0.22s ease-out both;
+    }
+
+    .diff-btn {
+      background: transparent;
+      border: none; border-right: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--font); font-size: 9px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      padding: 10px 20px;
+      cursor: pointer; outline: none;
+      transition: all 0.18s ease; position: relative; overflow: hidden;
+    }
+    .diff-btn:last-child { border-right: none; }
+    .diff-btn::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: var(--cyan-dim);
+      opacity: 0; transition: opacity 0.18s ease;
+    }
+    .diff-btn:hover { color: var(--text); }
+    .diff-btn:hover::before { opacity: 0.5; }
+    .diff-btn.selected {
+      background: var(--cyan-dim); color: var(--cyan);
+      filter: drop-shadow(0 0 8px var(--cyan-glow));
+    }
+
+    /* ── Score cards ── */
+    .score-cards {
+      display: flex; gap: 1px; margin-bottom: 32px; width: 100%;
+      animation: stagger 0.5s 0.16s ease-out both;
+    }
+    .score-card {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 14px; text-align: center;
+    }
+    .sc-label {
+      font-size: 7px; font-weight: 600; letter-spacing: 4px;
+      color: var(--faint); text-transform: uppercase; margin-bottom: 8px;
+    }
+    .sc-value {
+      font-size: 48px; font-weight: 900; line-height: 1;
+      color: var(--text);
+    }
+    .sc-value.gold {
+      color: var(--amber);
+      filter: drop-shadow(0 0 18px rgba(251,191,36,0.45));
+    }
+    .new-best {
+      display: none; margin-top: 6px;
+      font-size: 7px; font-weight: 700; letter-spacing: 3px;
+      color: var(--amber); text-transform: uppercase;
+      animation: newBestPulse 1.4s ease-in-out infinite;
+    }
+
+    /* ── CTA Buttons ── */
+    .btn-primary {
+      position: relative; overflow: hidden;
+      background: transparent;
+      border: 1.5px solid var(--cyan); border-radius: 10px;
+      color: var(--cyan);
+      font-family: var(--font); font-size: 11px; font-weight: 700;
+      letter-spacing: 5px; text-transform: uppercase;
+      padding: 16px 44px;
+      cursor: pointer; outline: none;
+      filter: drop-shadow(0 0 16px var(--cyan-glow));
+      transition: filter 0.2s ease, transform 0.12s ease;
+      animation: stagger 0.5s 0.28s ease-out both;
+    }
+    .btn-primary::before {
+      content: '';
+      position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(34,211,238,0.12), transparent);
+      transition: left 0.45s ease;
+    }
+    .btn-primary:hover::before { left: 100%; }
+    .btn-primary:hover { filter: drop-shadow(0 0 28px var(--cyan-glow)); }
+    .btn-primary:active { transform: scale(0.97); }
+
+    .btn-secondary {
+      background: transparent; border: 1.5px solid var(--border-hi);
+      border-radius: 10px; color: var(--muted);
+      font-family: var(--font); font-size: 11px; font-weight: 700;
+      letter-spacing: 5px; text-transform: uppercase;
+      padding: 16px 36px; cursor: pointer; outline: none;
+      transition: all 0.18s ease;
+    }
+    .btn-secondary:hover { border-color: rgba(255,255,255,0.28); color: var(--text); }
+    .btn-secondary:active { transform: scale(0.97); }
+
+    .btn-row {
+      display: flex; gap: 10px;
+      animation: stagger 0.5s 0.32s ease-out both;
+    }
+
+    .hint-text {
+      font-size: 8px; font-weight: 500; letter-spacing: 4px;
+      color: var(--faint); text-transform: uppercase; margin-top: 24px;
+      animation: stagger 0.5s 0.35s ease-out both;
+    }
+
+    /* ═══════════════════════════════════════
+       ATTRIBUTION FOOTER
+    ═══════════════════════════════════════ */
+    .attribution {
+      width: 100%; padding: 16px 0 20px;
+      border-top: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      align-items: center; gap: 10px;
+      animation: stagger 0.5s 0.42s ease-out both;
+    }
+    .attr-copy {
+      font-size: 8px; font-weight: 500; letter-spacing: 1px;
+      color: var(--faint);
+    }
+    .attr-links {
+      display: flex; gap: 8px; align-items: center;
+    }
+    .attr-link {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 11px; border-radius: 100px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 7.5px; font-weight: 600; letter-spacing: 0.5px;
+      text-decoration: none; cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .attr-link:hover {
+      border-color: var(--border-hi); color: var(--text);
+      background: var(--surface-2);
+    }
+    .attr-link svg { flex-shrink: 0; }
+    .attr-sep {
+      width: 3px; height: 3px; border-radius: 50%;
+      background: var(--faint);
+    }
+
+    /* ═══════════════════════════════════════
+       KEYFRAMES
+    ═══════════════════════════════════════ */
+    @keyframes stagger {
+      from { opacity:0; transform: translateY(12px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    @keyframes dotPulse {
+      0%,100% { transform: scale(1); opacity:0.7; }
+      50%     { transform: scale(1.6); opacity:1; }
+    }
+    @keyframes newBestPulse {
+      0%,100% { opacity:0.6; }
+      50%     { opacity:1; }
+    }
+    @keyframes scoreFlash {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.28); filter: brightness(1.8) drop-shadow(0 0 24px var(--dyn-accent)); }
+      100% { transform: scale(1); filter: brightness(1); }
+    }
+  </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <div class="score-display" id="score-display">0</div>
-        
-        <!-- Main Menu -->
-        <div class="overlay" id="menu-screen">
-            <h1>FLAPPY BIRD</h1>
-            <p style="font-size: 10px; margin-bottom: 20px;">GOD MODE EDITION</p>
-            
-            <div style="margin-bottom: 20px;">
-                <p style="font-size: 10px; margin-bottom: 10px;">DIFFICULTY</p>
-                <button class="btn btn-difficulty selected" onclick="selectDifficulty('easy')" id="btn-easy">EASY</button>
-                <button class="btn btn-difficulty" onclick="selectDifficulty('hard')" id="btn-hard">HARD</button>
-                <button class="btn btn-difficulty" onclick="selectDifficulty('insane')" id="btn-insane">INSANE</button>
-            </div>
+  <!-- Custom cursor -->
+  <div id="cursor"></div>
+  <div id="cursor-ring"></div>
 
-            <button class="btn" onclick="startGame()">START GAME</button>
-            <p style="font-size: 8px; margin-top: 20px; color: #ccc;">SPACE or TAP to FLAP</p>
+  <div id="wrap-outer">
+    <div id="wrap">
+
+      <!-- Corner brackets -->
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+
+      <!-- ═══ HUD ═══════════════════════════════ -->
+      <div id="hud">
+        <div id="hud-score">
+          <div id="score-num">0</div>
+          <div id="score-label">Score</div>
         </div>
 
-        <!-- Game Over Screen -->
-        <div class="overlay hidden" id="gameover-screen">
-            <h1 style="color: #ff4444;">GAME OVER</h1>
-            <div style="margin: 20px 0;">
-                <p style="font-size: 12px;">SCORE</p>
-                <p style="font-size: 24px;" id="final-score">0</p>
-            </div>
-            <div style="margin-bottom: 20px;">
-                <p style="font-size: 12px;">BEST</p>
-                <p style="font-size: 20px; color: gold;" id="best-score">0</p>
-            </div>
-            <button class="btn" onclick="restartGame()">RETRY</button>
-            <button class="btn" style="background: #607d8b; border-bottom-color: #37474f;" onclick="showMenu()">MENU</button>
+        <div id="hud-right">
+          <div id="best-block">
+            <div id="best-num">0</div>
+            <div id="best-label">Best</div>
+          </div>
+          <div id="combo-badge">
+            <div id="combo-dot"></div>
+            <span id="combo-text">×2 COMBO</span>
+          </div>
         </div>
 
-        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <!-- Velocity bar (left edge) -->
+        <div id="vel-bar"><div id="vel-fill"></div></div>
+
+        <!-- Shield indicators -->
+        <div id="shield-bar"></div>
+        <div id="shield-text">◈ &thinsp;SHIELD ACTIVE</div>
+      </div>
+
+      <!-- ═══ MENU OVERLAY ═══════════════════════ -->
+      <div class="overlay" id="menu-screen">
+        <div class="ov-body">
+          <div class="ov-eyebrow">nano · bird</div>
+          <div class="ov-title">CYBER <span class="accent">FLIGHT</span></div>
+          <div class="ov-subtitle">God Mode Edition</div>
+
+          <div class="diff-group">
+            <button class="diff-btn selected" id="btn-easy"   onclick="selectDifficulty('easy')">Easy</button>
+            <button class="diff-btn"          id="btn-hard"   onclick="selectDifficulty('hard')">Hard</button>
+            <button class="diff-btn"          id="btn-insane" onclick="selectDifficulty('insane')">Insane</button>
+          </div>
+
+          <button class="btn-primary" onclick="startGame()">Play Now</button>
+          <div class="hint-text">Space · Click · Tap to flap</div>
+        </div>
+
+        <div class="attribution">
+          <div class="attr-copy">© 2026 Abhishek Shah &nbsp;·&nbsp; All rights reserved</div>
+          <div class="attr-links">
+            <a class="attr-link" href="https://linkedin.com/in/theabhishekshah" target="_blank" rel="noopener">
+              <!-- LinkedIn icon -->
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+              </svg>
+              theabhishekshah
+            </a>
+            <div class="attr-sep"></div>
+            <a class="attr-link" href="https://abhishekshah.vercel.app" target="_blank" rel="noopener">
+              <!-- Globe icon -->
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              abhishekshah.vercel.app
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ GAME OVER OVERLAY ═══════════════════ -->
+      <div class="overlay hidden" id="gameover-screen">
+        <div class="ov-body">
+          <div class="ov-eyebrow">mission failed</div>
+          <div class="ov-title danger">GAME <span class="accent">OVER</span></div>
+          <div class="ov-subtitle" style="margin-bottom:28px;">Better luck next run</div>
+
+          <div class="score-cards">
+            <div class="score-card">
+              <div class="sc-label">Score</div>
+              <div class="sc-value" id="final-score">0</div>
+            </div>
+            <div class="score-card">
+              <div class="sc-label">Best</div>
+              <div class="sc-value gold" id="best-score">0</div>
+              <div class="new-best" id="new-best-tag">★ New Record</div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn-primary"   onclick="restartGame()">Retry</button>
+            <button class="btn-secondary" onclick="showMenu()">Menu</button>
+          </div>
+        </div>
+
+        <div class="attribution">
+          <div class="attr-copy">© 2026 Abhishek Shah &nbsp;·&nbsp; All rights reserved</div>
+          <div class="attr-links">
+            <a class="attr-link" href="https://linkedin.com/in/theabhishekshah" target="_blank" rel="noopener">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+              </svg>
+              theabhishekshah
+            </a>
+            <div class="attr-sep"></div>
+            <a class="attr-link" href="https://abhishekshah.vercel.app" target="_blank" rel="noopener">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              abhishekshah.vercel.app
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <canvas id="gc" width="400" height="600"></canvas>
     </div>
+  </div>
 
-    <script src="flappy.js"></script>
+  <script src="flappy.js"></script>
 </body>
 </html>
